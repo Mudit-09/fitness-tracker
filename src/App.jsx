@@ -30,16 +30,10 @@ function getStoredData() {
   try {
     const savedData = localStorage.getItem(STORAGE_KEY);
     const parsedData = savedData ? JSON.parse(savedData) : [];
-
     return Array.isArray(parsedData) ? parsedData : [];
   } catch {
     return [];
   }
-}
-
-function formatDate(dateString) {
-  // Keep YYYY-MM-DD unchanged to avoid timezone-related date shifts.
-  return dateString;
 }
 
 function getLastSevenDaysData(data) {
@@ -83,7 +77,9 @@ function App() {
 
     return lastSevenDays
       .reduce((result, item) => {
-        const existing = result.find((entry) => entry.date === item.date);
+        const existing = result.find(
+          (entry) => entry.date === item.date
+        );
 
         if (existing) {
           existing.caloriesIntake += Number(item.caloriesIntake) || 0;
@@ -101,33 +97,40 @@ function App() {
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [healthData]);
 
-  const overallData = useMemo(() => {
-    return [
+  const overallData = useMemo(
+    () => [
       {
         name: "Calories Intake",
         value: healthData.reduce(
-          (total, item) => total + (Number(item.caloriesIntake) || 0),
+          (total, item) =>
+            total + (Number(item.caloriesIntake) || 0),
           0
         ),
       },
       {
         name: "Calories Burned",
         value: healthData.reduce(
-          (total, item) => total + (Number(item.caloriesBurned) || 0),
+          (total, item) =>
+            total + (Number(item.caloriesBurned) || 0),
           0
         ),
       },
-    ];
-  }, [healthData]);
+    ],
+    [healthData]
+  );
 
-  const sortedHealthData = useMemo(() => {
-    return [...healthData].sort((a, b) => {
-      const dateComparison = (b.date || "").localeCompare(a.date || "");
-      if (dateComparison !== 0) return dateComparison;
+  const sortedHealthData = useMemo(
+    () =>
+      [...healthData].sort((a, b) => {
+        const dateComparison = (b.date || "").localeCompare(
+          a.date || ""
+        );
 
-      return Number(b.id) - Number(a.id);
-    });
-  }, [healthData]);
+        if (dateComparison !== 0) return dateComparison;
+        return Number(b.id) - Number(a.id);
+      }),
+    [healthData]
+  );
 
   function handleInputChange(event) {
     const { name, value } = event.target;
@@ -145,12 +148,21 @@ function App() {
       caloriesBurned: "",
       description: "",
     });
+
     setEditingId(null);
     setShowForm(false);
   }
 
   function handleSubmit(event) {
     event.preventDefault();
+
+    if (
+      !formData.date ||
+      formData.caloriesIntake === "" ||
+      formData.caloriesBurned === ""
+    ) {
+      return;
+    }
 
     const entry = {
       id: editingId ?? Date.now(),
@@ -159,15 +171,6 @@ function App() {
       caloriesBurned: Number(formData.caloriesBurned),
       description: formData.description.trim(),
     };
-
-    if (!entry.date) return;
-
-    if (
-      formData.caloriesIntake === "" ||
-      formData.caloriesBurned === ""
-    ) {
-      return;
-    }
 
     if (editingId !== null) {
       setHealthData((previous) =>
@@ -204,37 +207,40 @@ function App() {
     }
   }
 
+  function openForm() {
+    if (!showForm) {
+      setFormData({
+        date: getToday(),
+        caloriesIntake: "",
+        caloriesBurned: "",
+        description: "",
+      });
+      setEditingId(null);
+    }
+
+    setShowForm((previous) => !previous);
+  }
+
   const pieColors = ["#4f46e5", "#16a34a"];
 
   return (
     <main className="app-container">
       <header className="app-header">
         <h1>Health And Fitness Tracker</h1>
+
         <button
           type="button"
           className="add-data-button"
-          onClick={() => {
-            if (!showForm) {
-              setFormData({
-                date: getToday(),
-                caloriesIntake: "",
-                caloriesBurned: "",
-                description: "",
-              });
-              setEditingId(null);
-            }
-
-            setShowForm((previous) => !previous);
-          }}
+          onClick={openForm}
         >
           + Add data
         </button>
       </header>
 
-      {showForm && (
-        <section className="form-section">
-          <h2>Update Today's Data</h2>
+      <section className="form-section">
+        <h2>Update Today's Data</h2>
 
+        {showForm && (
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="date">Date</label>
@@ -306,8 +312,8 @@ function App() {
               </button>
             </div>
           </form>
-        </section>
-      )}
+        )}
+      </section>
 
       <div className="charts-container">
         {weeklyData.length > 0 && (
@@ -322,11 +328,13 @@ function App() {
                   <YAxis />
                   <Tooltip />
                   <Legend />
+
                   <Bar
                     dataKey="caloriesIntake"
                     name="Calories Intake"
                     fill="#4f46e5"
                   />
+
                   <Bar
                     dataKey="caloriesBurned"
                     name="Calories Burned"
@@ -360,6 +368,7 @@ function App() {
                     />
                   ))}
                 </Pie>
+
                 <Tooltip />
                 <Legend />
               </PieChart>
@@ -391,10 +400,11 @@ function App() {
               <tbody>
                 {sortedHealthData.map((item) => (
                   <tr key={item.id}>
-                    <td>{formatDate(item.date)}</td>
-                    <td>{item.caloriesIntake}</td>
-                    <td>{item.caloriesBurned}</td>
+                    <td>{item.date}</td>
+                    <td>Calories Intake = {item.caloriesIntake}</td>
+                    <td>Calories Burned = {item.caloriesBurned}</td>
                     <td>{item.description || "—"}</td>
+
                     <td>
                       <div className="table-actions">
                         <button
