@@ -15,4 +15,4 @@
 .DS_Store
 .prettierignore
 
-/assessment/node_modules
+/assessment/node_modulesnode_modules
