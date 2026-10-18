@@ -16,3 +16,14 @@
 .prettierignore
 
 /assessment/node_modulesnode_modules
+
+# Dependencies and generated build files
+node_modules/
+assessment/node_modules/
+dist/
+
+# Assessment-generated files
+assessment/.env
+assessment/cypressResults.json
+assessment/assesment_result.json
+assesment_result.json

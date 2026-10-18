@@ -1,0 +1,12 @@
+{
+    "Test Case 1: Health And Fitness Tracker Tests - should load the home page correctly": "TEST_STATUS_SUCCESS",
+    "Test Case 2: Health And Fitness Tracker Tests - should display Form Title and a Button to Open Form": "TEST_STATUS_SUCCESS",
+    "Test Case 3: Health And Fitness Tracker Tests - should have a button to add data and it should be styled correctly": "TEST_STATUS_SUCCESS",
+    "Test Case 4: Health And Fitness Tracker Tests - should be responsive for mobile view": "TEST_STATUS_SUCCESS",
+    "Test Case 5: Health And Fitness Tracker Tests - Should Only Show Last Weeks data in the Weekly Health Trends": "TEST_STATUS_SUCCESS",
+    "Test Case 6: Health And Fitness Tracker Tests - Adds data successfully": "TEST_STATUS_SUCCESS",
+    "Test Case 7: Health And Fitness Tracker Tests - Displays added Trends in the Recent Health Statistics": "TEST_STATUS_SUCCESS",
+    "Test Case 8: Health And Fitness Tracker Tests - Displays Calories Intake in the Recent Health Statistics": "TEST_STATUS_SUCCESS",
+    "Test Case 9: Health And Fitness Tracker Tests - Displays Calories Burned in the Recent Health Statistics": "TEST_STATUS_SUCCESS",
+    "Test Case 10: Health And Fitness Tracker Tests - Persists data in localStorage": "TEST_STATUS_SUCCESS"
+}

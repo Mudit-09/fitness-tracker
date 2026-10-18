@@ -1,6 +1,6 @@
 describe('Health And Fitness Tracker Tests', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000'); // Replace with your app's URL
+    cy.visit('https://fitness-tracker-henna-eta.vercel.app/'); // Replace with your app's URL
   });
 
   it('should load the home page correctly', () => {
