@@ -16,32 +16,32 @@ import {
 import "./App.css";
 
 const STORAGE_KEY = "healthAndFitness";
+const PIE_COLORS = ["#4f46e5", "#16a34a"];
 
 function getToday() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
-function getStoredData() {
+function readHealthData() {
   try {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    const parsedData = savedData ? JSON.parse(savedData) : [];
-    return Array.isArray(parsedData) ? parsedData : [];
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const parsed = saved ? JSON.parse(saved) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-function getLastSevenDaysData(data) {
+function getLastSevenDays(data) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const sevenDaysAgo = new Date(today);
-  sevenDaysAgo.setDate(today.getDate() - 6);
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 6);
 
   return data.filter((item) => {
     if (!item.date) return false;
@@ -50,14 +50,14 @@ function getLastSevenDaysData(data) {
 
     return (
       !Number.isNaN(date.getTime()) &&
-      date >= sevenDaysAgo &&
+      date >= startDate &&
       date <= today
     );
   });
 }
 
 function App() {
-  const [healthData, setHealthData] = useState(getStoredData);
+  const [healthData, setHealthData] = useState(readHealthData);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -73,28 +73,26 @@ function App() {
   }, [healthData]);
 
   const weeklyData = useMemo(() => {
-    const lastSevenDays = getLastSevenDaysData(healthData);
+    const recent = getLastSevenDays(healthData);
+    const grouped = new Map();
 
-    return lastSevenDays
-      .reduce((result, item) => {
-        const existing = result.find(
-          (entry) => entry.date === item.date
-        );
+    recent.forEach((item) => {
+      if (!grouped.has(item.date)) {
+        grouped.set(item.date, {
+          date: item.date,
+          caloriesIntake: 0,
+          caloriesBurned: 0,
+        });
+      }
 
-        if (existing) {
-          existing.caloriesIntake += Number(item.caloriesIntake) || 0;
-          existing.caloriesBurned += Number(item.caloriesBurned) || 0;
-        } else {
-          result.push({
-            date: item.date,
-            caloriesIntake: Number(item.caloriesIntake) || 0,
-            caloriesBurned: Number(item.caloriesBurned) || 0,
-          });
-        }
+      const entry = grouped.get(item.date);
+      entry.caloriesIntake += Number(item.caloriesIntake) || 0;
+      entry.caloriesBurned += Number(item.caloriesBurned) || 0;
+    });
 
-        return result;
-      }, [])
-      .sort((a, b) => a.date.localeCompare(b.date));
+    return Array.from(grouped.values()).sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
   }, [healthData]);
 
   const overallData = useMemo(
@@ -102,16 +100,14 @@ function App() {
       {
         name: "Calories Intake",
         value: healthData.reduce(
-          (total, item) =>
-            total + (Number(item.caloriesIntake) || 0),
+          (sum, item) => sum + (Number(item.caloriesIntake) || 0),
           0
         ),
       },
       {
         name: "Calories Burned",
         value: healthData.reduce(
-          (total, item) =>
-            total + (Number(item.caloriesBurned) || 0),
+          (sum, item) => sum + (Number(item.caloriesBurned) || 0),
           0
         ),
       },
@@ -122,12 +118,8 @@ function App() {
   const sortedHealthData = useMemo(
     () =>
       [...healthData].sort((a, b) => {
-        const dateComparison = (b.date || "").localeCompare(
-          a.date || ""
-        );
-
-        if (dateComparison !== 0) return dateComparison;
-        return Number(b.id) - Number(a.id);
+        const dateDifference = (b.date || "").localeCompare(a.date || "");
+        return dateDifference || Number(b.id) - Number(a.id);
       }),
     [healthData]
   );
@@ -141,16 +133,29 @@ function App() {
     }));
   }
 
-  function resetForm() {
+  function openForm() {
+    if (!showForm) {
+      setFormData({
+        date: getToday(),
+        caloriesIntake: "",
+        caloriesBurned: "",
+        description: "",
+      });
+      setEditingId(null);
+    }
+
+    setShowForm((previous) => !previous);
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setEditingId(null);
     setFormData({
       date: getToday(),
       caloriesIntake: "",
       caloriesBurned: "",
       description: "",
     });
-
-    setEditingId(null);
-    setShowForm(false);
   }
 
   function handleSubmit(event) {
@@ -182,7 +187,7 @@ function App() {
       setHealthData((previous) => [...previous, entry]);
     }
 
-    resetForm();
+    closeForm();
   }
 
   function handleEdit(item) {
@@ -203,129 +208,41 @@ function App() {
     );
 
     if (editingId === id) {
-      resetForm();
+      closeForm();
     }
   }
-
-  function openForm() {
-    if (!showForm) {
-      setFormData({
-        date: getToday(),
-        caloriesIntake: "",
-        caloriesBurned: "",
-        description: "",
-      });
-      setEditingId(null);
-    }
-
-    setShowForm((previous) => !previous);
-  }
-
-  const pieColors = ["#4f46e5", "#16a34a"];
 
   return (
-    <main className="app-container">
-      <header className="app-header">
-        <h1>Health And Fitness Tracker</h1>
+    <main className="app-shell">
+      <h1>Health And Fitness Tracker</h1>
 
-        <button
-          type="button"
-          className="add-data-button"
-          onClick={openForm}
-        >
-          + Add data
-        </button>
-      </header>
+      <section className="dashboard">
+        <div className="add-panel">
+          <h2 className="add-panel-title">Update Today's Data</h2>
 
-      <section className="form-section">
-        <h2>Update Today's Data</h2>
+          <button
+            type="button"
+            className="add-button"
+            onClick={openForm}
+          >
+            + Add data
+          </button>
 
-        {showForm && (
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="date">Date</label>
-              <input
-                id="date"
-                name="date"
-                type="date"
-                value={formData.date}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
+          {healthData.length === 0 && (
+            <p className="no-data">Add your daily health data to get started.</p>
+          )}
+        </div>
 
-            <div className="form-group">
-              <label htmlFor="caloriesIntake">
-                Calories Intake
-              </label>
-              <input
-                id="caloriesIntake"
-                name="caloriesIntake"
-                type="number"
-                min="0"
-                placeholder="Enter Today's Calorie Intake"
-                value={formData.caloriesIntake}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="caloriesBurned">
-                Calories Burned
-              </label>
-              <input
-                id="caloriesBurned"
-                name="caloriesBurned"
-                type="number"
-                min="0"
-                placeholder="Enter Today's Calorie Burned"
-                value={formData.caloriesBurned}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="description">Description</label>
-              <input
-                id="description"
-                name="description"
-                type="text"
-                placeholder="Enter a short description"
-                value={formData.description}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="form-actions">
-              <button type="submit" className="submit-button">
-                Submit
-              </button>
-
-              <button
-                type="button"
-                className="cancel-button"
-                onClick={resetForm}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
-      </section>
-
-      <div className="charts-container">
         {weeklyData.length > 0 && (
-          <section className="chart-card">
+          <div className="weekly-panel">
             <h2>Weekly Health Trends</h2>
 
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={300}>
+            <div className="bar-chart">
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weeklyData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
+                  <XAxis dataKey="date" tick={{ fill: "#fff", fontSize: 10 }} />
+                  <YAxis tick={{ fill: "#fff", fontSize: 10 }} />
                   <Tooltip />
                   <Legend />
 
@@ -343,94 +260,185 @@ function App() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </section>
-        )}
-
-        <section className="chart-card">
-          <h2>Overall Data</h2>
-
-          <div className="chart-wrapper">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={overallData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={95}
-                  label={({ name, value }) => `${name}: ${value}`}
-                >
-                  {overallData.map((entry, index) => (
-                    <Cell
-                      key={entry.name}
-                      fill={pieColors[index % pieColors.length]}
-                    />
-                  ))}
-                </Pie>
-
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      </div>
-
-      <section className="recent-data-section">
-        <h2>Recent Health Statistics</h2>
-
-        {sortedHealthData.length === 0 ? (
-          <p className="empty-message">
-            No health data available. Click + Add data to get started.
-          </p>
-        ) : (
-          <div className="table-responsive">
-            <table className="health-data-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Calories Intake</th>
-                  <th>Calories Burned</th>
-                  <th>Description</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {sortedHealthData.map((item) => (
-                  <tr key={item.id}>
-                    <td>{item.date}</td>
-                    <td>Calories Intake = {item.caloriesIntake}</td>
-                    <td>Calories Burned = {item.caloriesBurned}</td>
-                    <td>{item.description || "—"}</td>
-
-                    <td>
-                      <div className="table-actions">
-                        <button
-                          type="button"
-                          className="edit-button"
-                          onClick={() => handleEdit(item)}
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          className="delete-button"
-                          onClick={() => handleDelete(item.id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         )}
       </section>
+
+      <div className="lower-grid">
+        <section className="recent-section">
+          <h2>Recent Health Statistics</h2>
+
+          {sortedHealthData.length === 0 ? (
+            <p className="empty-message">
+              No health data available. Click + Add data to get started.
+            </p>
+          ) : (
+            <div className="record-list">
+              {sortedHealthData.map((item) => (
+                <article className="record-card" key={item.id}>
+                  <div className="record-copy">
+                    <p className="record-description">
+                      {item.description || "Daily health statistics"}
+                    </p>
+
+                    <p className="record-calories">
+                      Calories Intake = {item.caloriesIntake}
+                      {" | "}
+                      Calories Burned = {item.caloriesBurned}
+                    </p>
+                  </div>
+
+                  <time className="record-date" dateTime={item.date}>
+                    {item.date}
+                  </time>
+
+                  <div className="record-actions">
+                    <button
+                      type="button"
+                      className="icon-button edit-button"
+                      aria-label={`Edit ${item.date}`}
+                      onClick={() => handleEdit(item)}
+                    >
+                      ✎
+                    </button>
+
+                    <button
+                      type="button"
+                      className="icon-button delete-button"
+                      aria-label={`Delete ${item.date}`}
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="overall-section">
+          <h2>Overall Data</h2>
+
+          {healthData.length === 0 ? (
+            <p className="empty-message">
+              Your overall statistics will appear here after you add data.
+            </p>
+          ) : (
+            <div className="pie-chart">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={overallData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius="70%"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {overallData.map((item, index) => (
+                      <Cell
+                        key={item.name}
+                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </section>
+      </div>
+
+      {showForm && (
+        <div
+          className="modal-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeForm();
+            }
+          }}
+        >
+          <section
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="health-form-title"
+          >
+            <button
+              type="button"
+              className="modal-close"
+              aria-label="Close form"
+              onClick={closeForm}
+            >
+              ×
+            </button>
+
+            <h2 id="health-form-title">Update Today's Data</h2>
+
+            <form onSubmit={handleSubmit}>
+              <label htmlFor="date">Date</label>
+              <input
+                id="date"
+                name="date"
+                type="date"
+                value={formData.date}
+                onChange={handleInputChange}
+                required
+              />
+
+              <label htmlFor="caloriesIntake">Calories Intake</label>
+              <input
+                id="caloriesIntake"
+                name="caloriesIntake"
+                type="number"
+                min="0"
+                placeholder="Enter Today's Calorie Intake"
+                value={formData.caloriesIntake}
+                onChange={handleInputChange}
+                required
+              />
+
+              <label htmlFor="caloriesBurned">Calories Burned</label>
+              <input
+                id="caloriesBurned"
+                name="caloriesBurned"
+                type="number"
+                min="0"
+                placeholder="Enter Today's Calorie Burned"
+                value={formData.caloriesBurned}
+                onChange={handleInputChange}
+                required
+              />
+
+              <label htmlFor="description">Description</label>
+              <input
+                id="description"
+                name="description"
+                type="text"
+                placeholder="Enter a short description"
+                value={formData.description}
+                onChange={handleInputChange}
+              />
+
+              <button type="submit" className="submit-button">
+                Submit
+              </button>
+
+              <button
+                type="button"
+                className="cancel-button"
+                onClick={closeForm}
+              >
+                Cancel
+              </button>
+            </form>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
